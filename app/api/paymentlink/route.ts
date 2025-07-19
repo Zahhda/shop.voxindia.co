@@ -61,8 +61,16 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       console.error("Cashfree order error:", responseData);
-      return NextResponse.json({ error: responseData.message || "Order creation failed" }, { status: 400 });
+    console.error("Cashfree full error response:", responseData);
+    return NextResponse.json({ 
+      error: responseData.message || "Order creation failed", 
+    debug: responseData 
+}, { status: 400 });
     }
+    if (!authData?.data?.token) {
+  console.error("Auth failed:", authData);
+  return NextResponse.json({ error: "Authentication failed", debug: authData }, { status: 401 });
+}
 
     return NextResponse.json(responseData);
   } catch (err) {
