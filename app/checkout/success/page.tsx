@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, Suspense } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-function PaymentStatus() {
+export default function SuccessPage() {
   const params = useSearchParams();
   const [status, setStatus] = useState("Verifying your payment...");
 
@@ -25,16 +25,10 @@ function PaymentStatus() {
     }
   }, [params]);
 
-  return <p className="text-lg">{status}</p>;
-}
-
-export default function SuccessPage() {
   return (
     <div className="max-w-xl mx-auto text-center py-20">
       <h1 className="text-3xl font-bold mb-4">Order Confirmation</h1>
-      <Suspense fallback={<p>Loading...</p>}>
-        <PaymentStatus />
-      </Suspense>
+      <p className="text-lg">{status}</p>
     </div>
   );
 }

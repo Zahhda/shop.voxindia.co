@@ -1,4 +1,3 @@
-// app/api/paymentlink/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -23,8 +22,8 @@ export async function POST(req: NextRequest) {
     order_currency: "INR",
     order_note: "Payment for your purchase",
     order_meta: {
-      return_url: `https://shop.voxindia.co/checkout/success?order_id=${order_id}`,
-      notify_url: "https://shop.voxindia.co/api/payment-webhook"
+      return_url: `https://shop.voxindia.co/checkout/success?order_id=${order_id}`, // Replace with your domain
+      notify_url: `https://shop.voxindia.co/api/payment-webhook`, // webhook endpoint if any
     },
   };
 
@@ -43,7 +42,7 @@ export async function POST(req: NextRequest) {
     const result = await response.json();
 
     if (!response.ok) {
-      console.error("❌ Cashfree Error:", result);
+      console.error("Cashfree API Error:", result);
       return NextResponse.json({ error: "Cashfree API failed", details: result }, { status: 500 });
     }
 
@@ -53,7 +52,7 @@ export async function POST(req: NextRequest) {
       payment_link_url: result.payment_link,
     });
   } catch (err) {
-    console.error("❌ Server error:", err);
+    console.error("Server error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
