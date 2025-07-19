@@ -8,6 +8,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { cart, updateItemQuantity, removeFromCart, clearCart } = useCart();
 
+  const [isClient, setIsClient] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -26,6 +27,8 @@ export default function CheckoutPage() {
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   useEffect(() => {
+    setIsClient(true);
+
     if (cart.length === 0) {
       const stored = localStorage.getItem("cart");
       if (stored) {
@@ -102,7 +105,7 @@ export default function CheckoutPage() {
     }
   };
 
-  if (cart.length === 0 && typeof window !== "undefined") {
+  if (isClient && cart.length === 0) {
     return <p className="text-center py-10 text-lg">Your cart is empty.</p>;
   }
 
