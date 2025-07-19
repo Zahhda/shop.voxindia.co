@@ -1,11 +1,9 @@
-// app/checkout/success/page.js
-'use client';
-import { Suspense } from 'react';
-import SuccessPageContent from './SuccessPageContent';
+import { Suspense } from "react";
+import SuccessPageContent from "./SuccessPageContent";
 
 export default function SuccessPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Loading your confirmation...</div>}>
       <SuccessPageContent />
     </Suspense>
   );

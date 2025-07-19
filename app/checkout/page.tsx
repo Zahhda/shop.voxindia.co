@@ -74,7 +74,6 @@ export default function CheckoutPage() {
         return;
       }
 
-      // For Cashfree payment
       const res = await fetch("/api/paymentlink", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,8 +82,7 @@ export default function CheckoutPage() {
 
       const data = await res.json();
 
-      if (data.payment_link_url) {
-        // Clear cart & redirect to payment page
+      if (data.payment_link) {
         await fetch("/api/send-order-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -92,7 +90,7 @@ export default function CheckoutPage() {
         });
         clearCart();
         localStorage.removeItem("cart");
-        window.location.href = data.payment_link_url;
+        window.location.href = data.payment_link;
       } else {
         setError("Failed to initiate payment.");
       }
@@ -109,12 +107,12 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="container max-w-6xl mx-auto py-10 px-4">
-      <h1 className="text-4xl font-bold mb-10 text-center">Checkout</h1>
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 bg-white p-6 rounded-xl shadow-lg border">
-          <h2 className="text-2xl font-semibold mb-4">Billing Information</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="container max-w-6xl mx-auto py-12 px-6">
+      <h1 className="text-4xl font-bold mb-10 text-center text-gray-900">🧾 Checkout</h1>
+      <div className="grid md:grid-cols-3 gap-8">
+        <div className="md:col-span-2 bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-800">🧍 Billing Information</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {Object.entries(formData).map(([field, value]) => (
               <input
                 key={field}
@@ -124,30 +122,33 @@ export default function CheckoutPage() {
                 onChange={handleChange}
                 placeholder={field.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}
                 required
-                className="border p-2 rounded"
+                className="border border-gray-300 focus:border-black focus:ring-2 focus:ring-black/20 transition rounded-lg px-4 py-3 text-sm text-gray-700 placeholder-gray-400"
               />
             ))}
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-lg border">
-          <h2 className="text-2xl font-semibold mb-4">Order Summary</h2>
-          <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+        <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-800">🛍️ Order Summary</h2>
+
+          <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
             {cart.map((item) => (
-              <div key={item.productId} className="flex justify-between items-center gap-4">
-                <div>{item.productName} × {item.quantity}</div>
-                <div>₹{item.price * item.quantity}</div>
+              <div key={item.productId} className="flex justify-between text-sm text-gray-700">
+                <span>{item.productName} × {item.quantity}</span>
+                <span className="font-semibold">₹{item.price * item.quantity}</span>
               </div>
             ))}
           </div>
 
-          <div className="mt-4 mb-4 font-semibold text-lg flex justify-between">
+          <hr className="my-4" />
+
+          <div className="text-lg font-bold flex justify-between">
             <span>Total</span>
             <span>₹{total}</span>
           </div>
 
-          <div className="mb-4">
-            <label>
+          <div className="mt-6 space-y-2 text-sm text-gray-700">
+            <label className="flex items-center gap-2">
               <input
                 type="radio"
                 name="paymentMethod"
@@ -157,8 +158,7 @@ export default function CheckoutPage() {
               />
               Cashfree (UPI, Card, Wallet)
             </label>
-            <br />
-            <label>
+            <label className="flex items-center gap-2">
               <input
                 type="radio"
                 name="paymentMethod"
@@ -170,12 +170,12 @@ export default function CheckoutPage() {
             </label>
           </div>
 
-          {error && <p className="text-red-600 mb-2">{error}</p>}
+          {error && <p className="text-red-600 mt-3 text-sm">{error}</p>}
 
           <button
             onClick={handleSubmit}
             disabled={loading || cart.length === 0}
-            className="w-full bg-black text-white py-3 rounded-lg mt-2"
+            className="w-full bg-black text-white hover:bg-gray-800 transition py-3 rounded-xl text-lg mt-6"
           >
             {loading ? "Processing..." : `Pay ₹${total}`}
           </button>
