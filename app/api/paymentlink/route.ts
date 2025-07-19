@@ -4,20 +4,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const CASHFREE_CLIENT_ID = process.env.CASHFREE_CLIENT_ID;
-    const CASHFREE_CLIENT_SECRET = process.env.CASHFREE_CLIENT_SECRET;
-
-    if (!CASHFREE_CLIENT_ID || !CASHFREE_CLIENT_SECRET) {
-      console.error("❌ Missing Cashfree ENV Vars:", {
-        id: CASHFREE_CLIENT_ID,
-        secret: CASHFREE_CLIENT_SECRET,
-      });
-
-      return NextResponse.json(
-        { error: "Missing ENV", debug: { id: CASHFREE_CLIENT_ID, secret: CASHFREE_CLIENT_SECRET } },
-        { status: 500 }
-      );
-    }
+    // ✅ Hardcoded Cashfree production keys (TEMPORARY)
+    const clientId = "1005542365045eb7e40b308ba742455001";
+    const clientSecret = "cfsk_ma_prod_b060b76da0b585acdd1d0dd7781d7af8_5d480f29";
 
     const order_id = "ORDER_" + Date.now();
 
@@ -39,16 +28,12 @@ export async function POST(req: NextRequest) {
     };
 
     // Step 1: Authenticate
-    console.log("⚠️ Cashfree ENV Vars:", {
-  id: process.env.CASHFREE_CLIENT_ID,
-  secret: process.env.CASHFREE_CLIENT_SECRET,
-});
     const authRes = await fetch("https://api.cashfree.com/pg/v1/authenticate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        client_id: CASHFREE_CLIENT_ID,
-        client_secret: CASHFREE_CLIENT_SECRET,
+        client_id: clientId,
+        client_secret: clientSecret,
       }),
     });
 
@@ -61,8 +46,8 @@ export async function POST(req: NextRequest) {
 
     const token = authData.data.token;
 
-    // Step 2: Create payment order
-    const res = await fetch("https://api.cashfree.com/pg/orders", {
+    // Step 2: Create order
+    const orderRes = await fetch("https://api.cashfree.com/pg/orders", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -72,16 +57,16 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(payload),
     });
 
-    const result = await res.json();
+    const orderData = await orderRes.json();
 
-    if (!res.ok) {
-      console.error("❌ Cashfree order error:", result);
-      return NextResponse.json({ error: result.message || "Order creation failed", debug: result }, { status: 400 });
+    if (!orderRes.ok) {
+      console.error("❌ Order creation failed:", orderData);
+      return NextResponse.json({ error: orderData.message || "Order failed", debug: orderData }, { status: 400 });
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(orderData);
   } catch (err: any) {
-    console.error("❌ Unexpected error:", err);
+    console.error("❌ Server error:", err);
     return NextResponse.json({ error: "Internal Server Error", message: err.message }, { status: 500 });
   }
 }
