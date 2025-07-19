@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -11,48 +12,61 @@ export async function POST(req: NextRequest) {
   const order_id = "ORDER_" + Date.now();
 
   const payload = {
+    order_id,
+    order_amount: body.totalAmount,
+    order_currency: "INR",
+    order_note: "Payment for your purchase",
     customer_details: {
       customer_id: body.email,
       customer_email: body.email,
       customer_phone: body.phone,
       customer_name: body.fullName,
     },
-    order_id,
-    order_amount: body.totalAmount,
-    order_currency: "INR",
-    order_note: "Payment for your purchase",
     order_meta: {
-      return_url: `https://shop.voxindia.co/checkout/success?order_id=${order_id}`, // Replace with your domain
-      notify_url: `https://shop.voxindia.co/api/payment-webhook`, // webhook endpoint if any
+      return_url: `https://shop.voxindia.co/checkout/success?order_id=${order_id}`,
+      notify_url: `https://shop.voxindia.co/api/payment-webhook`,
     },
   };
 
   try {
-    const response = await fetch("https://api.cashfree.com/pg/links", {
+    // Step 1: Authenticate
+    const authRes = await fetch("https://api.cashfree.com/pg/v1/authenticate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: CASHFREE_CLIENT_ID,
+        client_secret: CASHFREE_CLIENT_SECRET,
+      }),
+    });
+
+    const authData = await authRes.json();
+    const token = authData.data.token;
+
+    if (!token) {
+      return NextResponse.json({ error: "Authentication failed" }, { status: 401 });
+    }
+
+    // Step 2: Create payment order
+    const response = await fetch("https://api.cashfree.com/pg/orders", {
       method: "POST",
       headers: {
-        "x-client-id": CASHFREE_CLIENT_ID,
-        "x-client-secret": CASHFREE_CLIENT_SECRET,
         "Content-Type": "application/json",
         "x-api-version": "2022-09-01",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
     });
 
-    const result = await response.json();
+    const responseData = await response.json();
 
     if (!response.ok) {
-      console.error("Cashfree API Error:", result);
-      return NextResponse.json({ error: "Cashfree API failed", details: result }, { status: 500 });
+      console.error("Cashfree order error:", responseData);
+      return NextResponse.json({ error: responseData.message || "Order creation failed" }, { status: 400 });
     }
 
-    return NextResponse.json({
-      success: true,
-      order_id,
-      payment_link_url: result.payment_link,
-    });
+    return NextResponse.json(responseData);
   } catch (err) {
-    console.error("Server error:", err);
+    console.error("Cashfree integration error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
