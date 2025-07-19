@@ -1,34 +1,37 @@
+// app/api/paymentlink/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { CASHFREE_CLIENT_ID, CASHFREE_CLIENT_SECRET } = process.env;
-
-  if (!CASHFREE_CLIENT_ID || !CASHFREE_CLIENT_SECRET) {
-    return NextResponse.json({ error: "Missing Cashfree keys" }, { status: 500 });
-  }
-
-  const order_id = "ORDER_" + Date.now();
-
-  const payload = {
-    order_id,
-    order_amount: body.totalAmount,
-    order_currency: "INR",
-    order_note: "Payment for your purchase",
-    customer_details: {
-      customer_id: body.email,
-      customer_email: body.email,
-      customer_phone: body.phone,
-      customer_name: body.fullName,
-    },
-    order_meta: {
-      return_url: `https://shop.voxindia.co/checkout/success?order_id=${order_id}`,
-      notify_url: `https://shop.voxindia.co/api/payment-webhook`,
-    },
-  };
-
   try {
+    const body = await req.json();
+
+    const { CASHFREE_CLIENT_ID, CASHFREE_CLIENT_SECRET } = process.env;
+
+    if (!CASHFREE_CLIENT_ID || !CASHFREE_CLIENT_SECRET) {
+      console.error("❌ Missing Cashfree keys");
+      return NextResponse.json({ error: "Missing Cashfree keys" }, { status: 500 });
+    }
+
+    const order_id = "ORDER_" + Date.now();
+
+    const payload = {
+      order_id,
+      order_amount: body.totalAmount,
+      order_currency: "INR",
+      order_note: "Payment for your purchase",
+      customer_details: {
+        customer_id: body.email,
+        customer_email: body.email,
+        customer_phone: body.phone,
+        customer_name: body.fullName,
+      },
+      order_meta: {
+        return_url: `https://shop.voxindia.co/checkout/success?order_id=${order_id}`,
+        notify_url: `https://shop.voxindia.co/api/payment-webhook`,
+      },
+    };
+
     // Step 1: Authenticate
     const authRes = await fetch("https://api.cashfree.com/pg/v1/authenticate", {
       method: "POST",
@@ -40,14 +43,16 @@ export async function POST(req: NextRequest) {
     });
 
     const authData = await authRes.json();
-    const token = authData.data.token;
 
-    if (!token) {
-      return NextResponse.json({ error: "Authentication failed" }, { status: 401 });
+    if (!authData?.data?.token) {
+      console.error("❌ Auth failed:", authData);
+      return NextResponse.json({ error: "Authentication failed", debug: authData }, { status: 401 });
     }
 
+    const token = authData.data.token;
+
     // Step 2: Create payment order
-    const response = await fetch("https://api.cashfree.com/pg/orders", {
+    const res = await fetch("https://api.cashfree.com/pg/orders", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -57,24 +62,16 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(payload),
     });
 
-    const responseData = await response.json();
+    const result = await res.json();
 
-    if (!response.ok) {
-      console.error("Cashfree order error:", responseData);
-    console.error("Cashfree full error response:", responseData);
-    return NextResponse.json({ 
-      error: responseData.message || "Order creation failed", 
-    debug: responseData 
-}, { status: 400 });
+    if (!res.ok) {
+      console.error("❌ Cashfree order error:", result);
+      return NextResponse.json({ error: result.message || "Order creation failed", debug: result }, { status: 400 });
     }
-    if (!authData?.data?.token) {
-  console.error("Auth failed:", authData);
-  return NextResponse.json({ error: "Authentication failed", debug: authData }, { status: 401 });
-}
 
-    return NextResponse.json(responseData);
-  } catch (err) {
-    console.error("Cashfree integration error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(result);
+  } catch (err: any) {
+    console.error("❌ Unexpected error:", err);
+    return NextResponse.json({ error: "Internal Server Error", message: err.message }, { status: 500 });
   }
 }
