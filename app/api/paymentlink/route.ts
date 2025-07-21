@@ -4,9 +4,12 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // ✅ Hardcoded Cashfree production keys (TEMPORARY)
-    const clientId = "1005542365045eb7e40b308ba742455001";
-    const clientSecret = "cfsk_ma_prod_b060b76da0b585acdd1d0dd7781d7af8_5d480f29";
+    const clientId = process.env.CASHFREE_CLIENT_ID;
+    const clientSecret = process.env.CASHFREE_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      return NextResponse.json({ error: "Missing Cashfree credentials" }, { status: 500 });
+    }
 
     const order_id = "ORDER_" + Date.now();
 

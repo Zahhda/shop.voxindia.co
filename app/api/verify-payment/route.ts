@@ -1,57 +1,47 @@
+// app/api/verify-payment/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const orderId = searchParams.get("order_id");
-
-  if (!orderId) {
-    return NextResponse.json({ error: "Missing order ID" }, { status: 400 });
-  }
-
-  const { CASHFREE_CLIENT_ID, CASHFREE_CLIENT_SECRET } = process.env;
-
-  if (!CASHFREE_CLIENT_ID || !CASHFREE_CLIENT_SECRET) {
-    return NextResponse.json({ error: "Missing Cashfree keys" }, { status: 500 });
-  }
-
+export async function POST(req: NextRequest) {
   try {
-    // Step 1: Authenticate
-    const authRes = await fetch("https://api.cashfree.com/pg/v1/authenticate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_id: CASHFREE_CLIENT_ID,
-        client_secret: CASHFREE_CLIENT_SECRET,
-      }),
-    });
+    const body = await req.json();
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    } = body;
 
-    const authData = await authRes.json();
-    const token = authData.data.token;
+    const RAZORPAY_SECRET = process.env.RAZORPAY_SECRET;
 
-    if (!token) {
-      return NextResponse.json({ error: "Authentication failed" }, { status: 401 });
+    if (!RAZORPAY_SECRET) {
+      return NextResponse.json({ error: "Missing Razorpay secret" }, { status: 500 });
     }
 
-    // Step 2: Fetch order status
-    const res = await fetch(`https://api.cashfree.com/pg/orders/${orderId}`, {
-      method: "GET",
-      headers: {
-        "x-api-version": "2022-09-01",
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    const result = await res.json();
-
-    if (!res.ok) {
-      console.error("Cashfree status error:", result);
-      return NextResponse.json({ error: result.message || "Cashfree query failed" }, { status: 400 });
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return NextResponse.json({ error: "Missing payment fields" }, { status: 400 });
     }
 
-    return NextResponse.json(result);
-  } catch (err) {
-    console.error("Verify error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const generated_signature = crypto
+      .createHmac("sha256", RAZORPAY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest("hex");
+
+    const isValid = generated_signature === razorpay_signature;
+
+    if (isValid) {
+      return NextResponse.json({
+        success: true,
+        message: "Payment signature verified",
+        payment_id: razorpay_payment_id,
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        error: "Signature mismatch",
+      }, { status: 400 });
+    }
+  } catch (err: any) {
+    console.error("❌ Verification error:", err);
+    return NextResponse.json({ error: "Server Error", message: err.message }, { status: 500 });
   }
 }
