@@ -26,7 +26,6 @@ export default function CheckoutPage() {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  // Restore cart quantities from localStorage on mount (optional)
   useEffect(() => {
     if (cart.length === 0 && typeof updateQuantity === "function") {
       const stored = localStorage.getItem("cart");
@@ -47,7 +46,6 @@ export default function CheckoutPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Handler to update quantity with colorName
   const updateQuantityHandler = (
     productId: string,
     colorName: string | undefined,
@@ -62,7 +60,6 @@ export default function CheckoutPage() {
     else removeItem(productId, colorName);
   };
 
-  // Load Razorpay script dynamically
   const loadRazorpayScript = () =>
     new Promise<boolean>((resolve) => {
       const script = document.createElement("script");
@@ -72,7 +69,6 @@ export default function CheckoutPage() {
       document.body.appendChild(script);
     });
 
-  // Payment submission handler
   const handleSubmit = async () => {
     if (
       Object.values(formData).some((v) => v.trim() === "") ||
@@ -94,23 +90,27 @@ export default function CheckoutPage() {
 
     try {
       if (paymentMethod === "cod") {
-        await fetch("/api/send-order-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(orderPayload),
-        });
+        try {
+          await fetch("/api/send-order-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(orderPayload),
+          });
+        } catch (err) {
+          console.warn("Failed to send COD order email, continuing to success");
+        }
         clearCart();
         localStorage.removeItem("cart");
         router.push("/checkout/success");
         return;
       }
 
-      // Razorpay flow
       const res = await fetch("/api/razorpay/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: total * 100 }), // amount in paise
+        body: JSON.stringify({ amount: total * 100 }),
       });
+
       const data = await res.json();
 
       const razorpayLoaded = await loadRazorpayScript();
@@ -128,12 +128,15 @@ export default function CheckoutPage() {
         description: "Order Payment",
         order_id: data.id,
         handler: async (response: any) => {
-          // Payment success handler
-          await fetch("/api/send-order-email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(orderPayload),
-          });
+          try {
+            await fetch("/api/send-order-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(orderPayload),
+            });
+          } catch (err) {
+            console.warn("Failed to send order email after payment success");
+          }
           clearCart();
           localStorage.removeItem("cart");
           router.push("/checkout/success");
@@ -160,14 +163,14 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-tr from-gray-50 via-white to-gray-100 py-12 px-6 md:px-16 font-sans">
-      <h1 className="text-center text-5xl font-semibold tracking-tight mb-14 text-gray-900">
+    <div className="min-h-screen bg-gradient-to-tr from-gray-100 via-white to-gray-50 py-12 px-6 sm:px-16 font-sans">
+      <h1 className="text-center text-5xl font-extrabold tracking-tight mb-14 text-gray-900">
         Checkout
       </h1>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-16">
         {/* Billing Form */}
-        <section className="lg:col-span-2 bg-white bg-opacity-80 backdrop-blur-md rounded-3xl shadow-lg p-10 border border-gray-200">
+        <section className="lg:col-span-2 bg-white bg-opacity-60 backdrop-blur-xl rounded-3xl shadow-xl p-12 border border-gray-200">
           <h2 className="text-3xl font-medium mb-8 tracking-wide text-gray-900">
             Billing Information
           </h2>
@@ -193,7 +196,7 @@ export default function CheckoutPage() {
         </section>
 
         {/* Order Summary */}
-        <aside className="bg-white bg-opacity-80 backdrop-blur-md rounded-3xl shadow-lg p-8 border border-gray-200 sticky top-24 h-fit">
+        <aside className="bg-white bg-opacity-60 backdrop-blur-xl rounded-3xl shadow-xl p-10 border border-gray-200 sticky top-24 h-fit">
           <h2 className="text-3xl font-medium mb-6 tracking-wide text-gray-900">
             Order Summary
           </h2>
@@ -236,6 +239,7 @@ export default function CheckoutPage() {
                           updateQuantityHandler(item.productId, item.colorName, -1)
                         }
                         className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition"
+                        aria-label="Decrease quantity"
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -256,6 +260,7 @@ export default function CheckoutPage() {
                           updateQuantityHandler(item.productId, item.colorName, 1)
                         }
                         className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition"
+                        aria-label="Increase quantity"
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
